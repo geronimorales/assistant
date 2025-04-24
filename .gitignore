@@ -1,0 +1,8 @@
+__pycache__/
+.venv
+.env
+.editorconfig
+.DS_Store
+.mypy_cache
+output/*
+storage

@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "assistant"
+version = "0.1.0"
+description = "AI Assistant project with FastAPI and LangChain"
+authors = ["Your Name <your.email@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.109.0"
+uvicorn = "^0.27.0"
+sqlalchemy = "^2.0.25"
+alembic = "^1.13.1"
+asyncpg = "^0.29.0"
+langchain = "^0.1.0"
+langgraph = "^0.0.15"
+llama-index = "^0.9.8"
+python-dotenv = "^1.0.0"
+pydantic = "^2.6.0"
+pydantic-settings = "^2.1.0"
+openai = "^1.12.0"
+ollama = "^0.1.6"
+requests-toolbelt = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^24.1.0"
+isort = "^5.13.0"
+mypy = "^1.8.0"
+
+[tool.poetry.scripts]
+dev = "assistant.scripts.dev:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3 
