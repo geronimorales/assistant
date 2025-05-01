@@ -1,0 +1,41 @@
+{
+    "btbox": {
+        "transport": "stdio",
+        "command": "python",
+        "args": ["src/assistant/core/mcp/btbox.py"],
+        "metadata": {
+            "list_coincidences": {
+                "name": "list_coincidences",
+                "description": "Retrieves documents with coincidences from a given query",
+                "message": "Buscando coincidencias...",
+                "return_direct": false,
+                "interrupt": false
+            },
+            "get_user_account": {
+                "name": "get_user_account",
+                "description": "Retrieves user account information",
+                "message": "Obteniendo información de tu perfil...",
+                "return_direct": false,
+                "interrupt": false
+            },
+            "get_user_calendar": {
+                "name": "get_user_calendar",
+                "description": "Retrieves the user's calendar with free time slots",
+                "message": "Obteniendo información del calendario...",
+                "return_direct": true,
+                "interrupt": false
+            },
+            "create_meeting": {
+                "name": "create_meeting",
+                "description": "Creates a meeting with the given date, time and participants",
+                "message": "Creando la reunión...",
+                "return_direct": true,
+                "interrupt": {
+                    "message": "Estoy por crear la reunión con los siguientes datos:",
+                    "continue": "yes",
+                    "cancel": "no"
+                }
+            }
+        }
+    }
+}

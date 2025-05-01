@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from assistant.core.config import settings
-from assistant.db.config import Base
+from assistant.config.database import Base
 
 config = context.config
 

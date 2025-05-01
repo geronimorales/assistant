@@ -1,31 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from assistant.core.settings import settings
+from assistant.config.app import config
+from assistant.api.routes import api_router
 
 app = FastAPI(
-    title=settings.API_TITLE,
-    version=settings.API_VERSION,
-    debug=settings.DEBUG,
+    title=config.get("api.title"),
+    version=config.get("api.version"),
+    debug=config.get("app.debug"),
 )
 
 # Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=settings.CORS_METHODS,
-    allow_headers=settings.CORS_HEADERS,
-)
-
-
-print("Starting AI Assistant API", settings.API_TITLE, settings.OPENAI_API_KEY)
+if config.get("app.env") == "local":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.get("cors.origins"),
+        allow_credentials=True,
+        allow_methods=config.get("cors.methods"),
+        allow_headers=config.get("cors.headers"),
+    )
 
 # Include routers
-@app.get("/")
-async def root():
-    return {
-        "message": "Welcome to AI Assistant API",
-        "version": settings.API_VERSION,
-        "environment": settings.ENVIRONMENT
-    } 
+app.include_router(api_router, prefix=config.get("api.prefix"))
