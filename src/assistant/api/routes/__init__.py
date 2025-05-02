@@ -2,11 +2,7 @@
 
 from fastapi import APIRouter
 
-from assistant.api.routes import (
-    assistant,
-    search,
-    home
-)
+from assistant.api.routes import assistant, search, home
 
 api_router = APIRouter()
 api_router.include_router(assistant.router)

@@ -3,6 +3,7 @@ from assistant.config.app import config
 
 router = APIRouter()
 
+
 @router.get(
     "/",
     summary="Get information from the knowledge base",
@@ -11,6 +12,6 @@ router = APIRouter()
 async def home_request():
     return {
         "message": "Welcome to AI Assistant API",
-        "version": config.get('api.version'),
-        "environment": config.get('app.env'),
-    } 
+        "version": config.get("api.version"),
+        "environment": config.get("app.env"),
+    }

@@ -1,5 +1,6 @@
 import requests
 import uuid
+from datetime import datetime, timedelta
 from typing import Literal
 from mcp.server.fastmcp import FastMCP
 from llama_index.core.base.base_retriever import BaseRetriever
@@ -10,21 +11,23 @@ mcp = FastMCP("Btbox MCP")
 
 api_key = ""
 
+
 @mcp.tool()
 def list_coincidences(query: str) -> dict:
     """Retrieves documents with information of persons that match with the given query
-    
+
     Args:
         query: The query to search for.
 
     Returns:
         A dict with the documents retrieved from the vector store.
     """
-    retriever = _get_retriever()
+    retriever = _get_retriever(max_items=10)
 
     docs = retriever.retrieve(query)
-    
+
     return {"coincidences": docs}
+
 
 @mcp.tool()
 def get_user_account() -> dict:
@@ -41,68 +44,65 @@ def get_user_account() -> dict:
         "address": "123 Main St, Anytown, USA",
     }
 
+
 @mcp.tool()
-def get_user_calendar(user_id: int) -> dict:
-    """Retrieves the user's calendar with free time slots
+def get_users_calendar(current_user_id: int, invited_user_id: int) -> dict:
+    """Retrieves the calendar of the user with the given id
 
     Args:
-        user_id: The id of the user to get the calendar.
+        current_user_id: The id of the current user.
+        invited_user_id: The id of the invited user.
 
     Returns:
-        A dict with the meetings.
+        A dict with calendar information for both users.
     """
-    return {"calendar": [
-        {
-            "id": uuid.uuid4(),
-            "date": "2024-01-01",
-            "time": "09:00",
-        },
-        {
-            "id": uuid.uuid4(),
-            "date": "2024-01-01",
-            "time": "09:30",
-        },
-        {
-            "id": uuid.uuid4(),
-            "modality": "in_person",
-            "date": "2024-01-01",
-            "time": "10:00",
-            "duration": 30,
-            "title": "Reunión con Mauricio Nudelman",
-            "participants": 2,
-        },
-        {
-            "id": uuid.uuid4(),
-            "date": "2024-01-01",
-            "time": "10:30",
-        },
-        {
-            "id": uuid.uuid4(),
-            "date": "2024-01-01",
-            "time": "11:00",
-        },
-        {
-            "id": uuid.uuid4(),
-            "date": "2024-01-01",
-            "time": "11:30",
-        }, 
-        {
-            "id": uuid.uuid4(),
-            "date": "2024-01-01",
-            "time": "12:00",
-        },
-    ]}
+
+    return {
+        "calendar": {
+            "start_at": "09:00",
+            "end_at": "18:00",
+            "duration": 20,  
+            "dates": {
+                "2025-05-02": {
+                    "blocked": [
+                        "09:20",
+                        "09:40",
+                        "11:00",
+                    ]
+                },
+                "2025-05-03": {
+                    "blocked": [
+                        "09:00",
+                        "09:20",
+                        "09:40",
+                        "10:00",
+                        "10:20",
+                        "10:40",
+                        "11:00",
+                        "11:20",
+                        "11:40",
+                    ]
+                },
+                "2025-05-04": {
+                    "blocked": [
+                        "10:00",
+                    ]
+                }
+            }
+        }
+    }
 
 @mcp.tool()
 def create_meeting(
     modality: Literal["in_person", "virtual"],
-    date: str, 
-    time: str, 
+    date: str,
+    time: str,
     duration: int,
     title: str,
-    participant_ids: list[int]
+    current_user_id: int,
+    invited_user_id: int,
 ) -> dict:
-    """Creates a meeting with the given date, time and participants
+    """Creates a meeting with the given data
 
     Args:
         modality: The modality of the meeting (in_person, virtual).
@@ -110,7 +110,8 @@ def create_meeting(
         time: The time of the meeting in format HH:MM.
         duration: The duration of the meeting in minutes.
         title: The title of the meeting.
-        participant_ids: The ids of the participants.
+        current_user_id: The id of the current user.
+        invited_user_id: The id of the invited user.
 
     Returns:
         A dict with the meeting information.
@@ -122,8 +123,10 @@ def create_meeting(
         "time": time,
         "duration": duration,
         "title": title,
-        "participants": len(participant_ids)
+        "current_user_id": current_user_id,
+        "invited_user_id": invited_user_id,
     }
+
 
 def _get_retriever(max_items: int = 5) -> BaseRetriever:
     vector_store = VectorStoreService()
@@ -134,6 +137,7 @@ def _get_retriever(max_items: int = 5) -> BaseRetriever:
             filters=[MetadataFilter(key="file_name", value="btbox.xlsx")]
         ),
     )
+
 
 def _exchange_token() -> str:
     """Exchange the token for a new one.
@@ -146,11 +150,41 @@ def _exchange_token() -> str:
     # response.raise_for_status()
     # return response.json()["access_token"]
 
+
 def _headers(token=None) -> dict:
     return {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
     }
+
+
+def generate_time_slots():
+    """Generate time slots from 8 AM to 12 PM in 20-minute intervals."""
+    slots = []
+    for hour in range(8, 12):
+        for minute in range(0, 60, 20):
+            time = f"{hour:02d}:{minute:02d}"
+            slots.append(time)
+    return slots
+
+def generate_calendar():
+    """Generate a calendar dictionary for the next 7 days with time slots."""
+    current_date = datetime.now()
+    calendar = {}
+    
+    # Generate time slots
+    time_slots = generate_time_slots()
+    
+    # Generate calendar for next 7 days
+    for day in range(7):
+        date = current_date + timedelta(days=day)
+        date_str = date.strftime("%Y-%m-%d")
+        calendar[date_str] = {
+            "slots": time_slots,
+            "available": {slot: True for slot in time_slots}
+        }
+    
+    return calendar
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

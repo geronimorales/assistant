@@ -25,9 +25,11 @@ def get_documents() -> List[Document]:
     """Load documents from the documents directory."""
     configs = load_configs()
     documents = []
-    
+
     for loader_type, loader_config in configs.items():
-        logger.info(f"Loading documents from loader: {loader_type}, config: {loader_config}")
+        logger.info(
+            f"Loading documents from loader: {loader_type}, config: {loader_config}"
+        )
         match loader_type:
             case "file":
                 document = get_file_documents(FileLoaderConfig(**loader_config))

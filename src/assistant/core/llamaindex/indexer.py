@@ -15,7 +15,7 @@ def generate():
     init_settings()
 
     embed_dim = 768
-    table_name = config.get('llamaindex.data_table')
+    table_name = config.get("llamaindex.data_table")
 
     url = make_url(get_database_url())
 
@@ -46,9 +46,7 @@ def generate():
         doc.metadata["private"] = "false"
 
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
-    
+
     VectorStoreIndex.from_documents(
-        documents, 
-        storage_context=storage_context, 
-        show_progress=True
+        documents, storage_context=storage_context, show_progress=True
     )

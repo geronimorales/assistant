@@ -33,15 +33,12 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from assistant.core.agents import prompts
 
+
 class BaseAgent(ABC):
 
     PROMPT_NAME = "v1"
 
-    def __init__(
-            self, 
-            thread_id: any, 
-            mcps: dict | None = None
-        ):
+    def __init__(self, thread_id: any, mcps: dict | None = None):
         """
         Initializes an BaseAgent instance.
 
@@ -52,7 +49,7 @@ class BaseAgent(ABC):
         """
         self._thread_id = thread_id
         self._mcps = mcps
-        
+
         self._tools_metadata = {}
 
         for name, config in mcps.items():
@@ -79,7 +76,7 @@ class BaseAgent(ABC):
         ).partial(tools=[tool_name for tool_name, _ in self._tools_metadata.items()])
 
     def _get_assistant_runnable(self):
-        assistant_prompt = self._get_prompt_template(BaseAgent.PROMPT_NAME);
+        assistant_prompt = self._get_prompt_template(BaseAgent.PROMPT_NAME)
         llm = self._get_chat_model()
         return assistant_prompt | llm.bind_tools(self._tools)
 
@@ -94,7 +91,6 @@ class BaseAgent(ABC):
             A string with the loaded prompt
         """
         return prompts.BTBOX_PROMPT
-    
 
     def _direct_tool_output(self, state: State):
         messages = state.get("messages")
@@ -115,9 +111,13 @@ class BaseAgent(ABC):
         tool_messages.reverse()
 
         for tool_message in tool_messages:
-            if tool_message.status == "success" and self._tools_metadata[tool_message.name].get("return_direct"):
+            if tool_message.status == "success" and self._tools_metadata[
+                tool_message.name
+            ].get("return_direct"):
                 tool_content = json.loads(tool_message.content)
-                content = json.dumps({"tool_name": tool_message.name, "data": tool_content})
+                content = json.dumps(
+                    {"tool_name": tool_message.name, "data": tool_content}
+                )
                 state = {**state, "messages": [AIMessage(content=content)]}
 
         # print("state", state)
@@ -135,7 +135,9 @@ class BaseAgent(ABC):
             for tool_call in message.tool_calls
         ]
         tool_call_ids_with_results = {
-            message.tool_call_id for message in messages if isinstance(message, ToolMessage)
+            message.tool_call_id
+            for message in messages
+            if isinstance(message, ToolMessage)
         }
         tool_calls_without_results = [
             tool_call
@@ -144,9 +146,9 @@ class BaseAgent(ABC):
         ]
         if not tool_calls_without_results:
             return
-        
+
         print("all_tool_calls", all_tool_calls)
-        print("tool_call_ids_with_results", tool_call_ids_with_results) 
+        print("tool_call_ids_with_results", tool_call_ids_with_results)
         print("tool_calls_without_results", tool_calls_without_results)
 
         error_message = create_error_message(
@@ -157,7 +159,7 @@ class BaseAgent(ABC):
             error_code=ErrorCode.INVALID_CHAT_HISTORY,
         )
         raise ValueError(error_message)
-    
+
     def _call_model(self, state: State, config: RunnableConfig) -> State:
         messages = state.get("messages")
         self._validate_chat_history(messages)
@@ -184,13 +186,21 @@ class BaseAgent(ABC):
         """
         graph_builder = StateGraph(State)
 
-        graph_builder.add_node("assistant", RunnableCallable(self._call_model, self._acall_model))
-        graph_builder.add_node("tools", ValidatedToolNode(self._tools, tools_metadata=self._tools_metadata))
-        graph_builder.add_node("direct_tool_output", RunnableCallable(self._direct_tool_output))
+        graph_builder.add_node(
+            "assistant", RunnableCallable(self._call_model, self._acall_model)
+        )
+        graph_builder.add_node(
+            "tools", ValidatedToolNode(self._tools, tools_metadata=self._tools_metadata)
+        )
+        graph_builder.add_node(
+            "direct_tool_output", RunnableCallable(self._direct_tool_output)
+        )
 
         graph_builder.add_edge(START, "assistant")
 
-        graph_builder.add_conditional_edges("assistant", tools_condition, ["tools", END])
+        graph_builder.add_conditional_edges(
+            "assistant", tools_condition, ["tools", END]
+        )
 
         graph_builder.add_edge("tools", "direct_tool_output")
         graph_builder.add_edge("direct_tool_output", "assistant")
@@ -200,22 +210,28 @@ class BaseAgent(ABC):
         graph = graph_builder.compile(checkpointer=checkpointer)
 
         return graph
-    
+
     async def _initialize(self):
         connection_kwargs = {"autocommit": True}
         connection_string = os.getenv("MEMORY_ASYNC_DATABASE_URL", None)
         if not connection_string:
             raise Exception(
-            "No connection string set for agent memory. Please add MEMORY_ASYNC_DATABASE_URL to .env"
-        )        
-        async with AsyncPostgresSaver.from_conn_string(connection_string) as checkpointer:
-            async with await AsyncConnection.connect(connection_string, **connection_kwargs) as conn:
-                checkpointer = AsyncPostgresSaver(conn)                
+                "No connection string set for agent memory. Please add MEMORY_ASYNC_DATABASE_URL to .env"
+            )
+        async with AsyncPostgresSaver.from_conn_string(
+            connection_string
+        ) as checkpointer:
+            async with await AsyncConnection.connect(
+                connection_string, **connection_kwargs
+            ) as conn:
+                checkpointer = AsyncPostgresSaver(conn)
                 self._graph = await self._create_graph(checkpointer)
 
     async def _stream(self, config: dict, input: dict = None):
-            
-        async for event, meta in self._graph.astream(input, config=config, stream_mode="messages"):
+
+        async for event, meta in self._graph.astream(
+            input, config=config, stream_mode="messages"
+        ):
             event.pretty_print()
             if (
                 hasattr(event, "tool_call_id")
@@ -242,24 +258,30 @@ class BaseAgent(ABC):
         async with MultiServerMCPClient(self._mcps) as client:
             self._tools = client.get_tools()
             self._model_runnable = self._get_assistant_runnable()
-    
+
             connection_kwargs = {"autocommit": True}
             connection_string = app_config.get("llm.memory.async_database_url")
             if not connection_string:
                 raise Exception(
-                "No connection string set for agent memory. Please add MEMORY_ASYNC_DATABASE_URL to .env"
-            )        
-            async with AsyncPostgresSaver.from_conn_string(connection_string) as checkpointer:
-                async with await AsyncConnection.connect(connection_string, **connection_kwargs) as conn:
-                    checkpointer = AsyncPostgresSaver(conn)                
+                    "No connection string set for agent memory. Please add MEMORY_ASYNC_DATABASE_URL to .env"
+                )
+            async with AsyncPostgresSaver.from_conn_string(
+                connection_string
+            ) as checkpointer:
+                async with await AsyncConnection.connect(
+                    connection_string, **connection_kwargs
+                ) as conn:
+                    checkpointer = AsyncPostgresSaver(conn)
                     self._graph = await self._create_graph(checkpointer)
-                    
-                    config = {"configurable": {"thread_id": self._thread_id}}        
-                    
+
+                    config = {"configurable": {"thread_id": self._thread_id}}
+
                     snapshot = await self._graph.aget_state(config)
 
                     # Check if previous interaction interrupted before tool calling
-                    if snapshot.next and hasattr(snapshot.values["messages"][-1], "tool_calls"):
+                    if snapshot.next and hasattr(
+                        snapshot.values["messages"][-1], "tool_calls"
+                    ):
 
                         for tool_call in snapshot.values["messages"][-1].tool_calls:
                             tool_name = tool_call["name"]
@@ -270,12 +292,19 @@ class BaseAgent(ABC):
                             if not tool_metadata["interrupt"]:
                                 continue
 
-                            resume = user_input.strip() == tool_metadata["interrupt"]["continue"]
+                            resume = (
+                                user_input.strip()
+                                == tool_metadata["interrupt"]["continue"]
+                            )
 
-                            async for content in self._stream(config, Command(resume=resume)):
+                            async for content in self._stream(
+                                config, Command(resume=resume)
+                            ):
                                 yield content
                     else:
-                        async for content in self._stream(config, {"messages": ("user", user_input)}):
+                        async for content in self._stream(
+                            config, {"messages": ("user", user_input)}
+                        ):
                             yield content
 
                     snapshot = await self._graph.aget_state(config)

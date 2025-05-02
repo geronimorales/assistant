@@ -18,7 +18,7 @@
                 "return_direct": false,
                 "interrupt": false
             },
-            "get_user_calendar": {
+            "get_users_calendar": {
                 "name": "get_user_calendar",
                 "description": "Retrieves the user's calendar with free time slots",
                 "message": "Obteniendo información del calendario...",
@@ -32,7 +32,7 @@
                 "return_direct": true,
                 "interrupt": {
                     "message": "Estoy por crear la reunión con los siguientes datos:",
-                    "continue": "yes",
+                    "continue": "si",
                     "cancel": "no"
                 }
             }

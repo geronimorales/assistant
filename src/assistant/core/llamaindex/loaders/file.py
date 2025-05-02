@@ -49,7 +49,7 @@ def get_file_documents(config: FileLoaderConfig):
 
             file_extractor = llama_parse_extractor()
         reader = SimpleDirectoryReader(
-            app_config.get('llamaindex.data_dir'),
+            app_config.get("llamaindex.data_dir"),
             recursive=True,
             filename_as_id=True,
             raise_on_error=True,

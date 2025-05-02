@@ -24,7 +24,7 @@ class VectorStoreService:
             password=url.password,
             port=str(url.port) if url.port else None,
             user=url.username,
-            table_name=config.get('llamaindex.data_table'),
+            table_name=config.get("llamaindex.data_table"),
             embed_dim=768,  # TODO: Make this configurable
             hnsw_kwargs={
                 "hnsw_m": 16,
@@ -36,6 +36,4 @@ class VectorStoreService:
 
     def get_index(self) -> VectorStoreIndex:
         """Get the vector store index."""
-        return VectorStoreIndex.from_vector_store(
-            vector_store=self.vector_store
-        ) 
+        return VectorStoreIndex.from_vector_store(vector_store=self.vector_store)

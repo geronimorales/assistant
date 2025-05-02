@@ -1,16 +1,7 @@
 import json
 from langgraph.prebuilt.tool_node import ToolNode
 from langchain_core.messages import ToolMessage
-from typing import (
-    Literal, 
-    Union,
-    Sequence,
-    Optional,
-    Any,
-    Optional,
-    Callable,
-    Union
-)
+from typing import Literal, Union, Sequence, Optional, Any, Optional, Callable, Union
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import ToolCall
 from langgraph.types import interrupt
@@ -61,10 +52,16 @@ class ValidatedToolNode(ToolNode):
     ) -> None:
         self._validated = {}
         self._tools_metadata = tools_metadata
-        super().__init__(tools, name=name, tags=tags, handle_tool_errors=handle_tool_errors, messages_key=messages_key)
+        super().__init__(
+            tools,
+            name=name,
+            tags=tags,
+            handle_tool_errors=handle_tool_errors,
+            messages_key=messages_key,
+        )
 
     def _validate_tool_call(self, call: ToolCall) -> Optional[ToolMessage]:
-        
+
         if call["id"] in self._validated:
             return None
 
@@ -78,7 +75,7 @@ class ValidatedToolNode(ToolNode):
             return ToolMessage(
                 content, name=requested_tool, tool_call_id=call["id"], status="error"
             )
-        
+
         error_messages = self._validate_call(call)
 
         if len(error_messages) > 0:
@@ -89,8 +86,8 @@ class ValidatedToolNode(ToolNode):
                 status="error",
             )
 
-        return None  
-        
+        return None
+
     def _validate_call(self, tool_call: any) -> list:
         call_args = tool_call["args"]
         schema = self.tools_by_name[tool_call["name"]].args_schema
@@ -115,7 +112,7 @@ class ValidatedToolNode(ToolNode):
         interrupt_data = tool_metadata.get("interrupt")
 
         call_args = call["args"]
-        
+
         if interrupt_data and not interrupt(
             {"action": "ask_for_human_approval"} | interrupt_data | {"args": call_args}
         ):
@@ -124,7 +121,7 @@ class ValidatedToolNode(ToolNode):
                 name=call["name"],
                 tool_call_id=call["id"],
                 status="error",
-            ) 
+            )
 
         return None
 
@@ -134,13 +131,13 @@ class ValidatedToolNode(ToolNode):
         input_type: Literal["list", "dict", "tool_calls"],
         config: RunnableConfig,
     ) -> ToolMessage:
-        
+
         if invalid_tool_message := self._validate_tool_call(call):
             return invalid_tool_message
-        
+
         if interrupt_message := self._check_interrupt(call):
             return interrupt_message
-        
+
         return await super()._arun_one(call, input_type, config)
 
     def _run_one(
@@ -149,11 +146,11 @@ class ValidatedToolNode(ToolNode):
         input_type: Literal["list", "dict", "tool_calls"],
         config: RunnableConfig,
     ) -> ToolMessage:
-        
+
         if invalid_tool_message := self._validate_tool_call(call):
             return invalid_tool_message
-        
+
         if interrupt_message := self._check_interrupt(call):
-            return interrupt_message        
+            return interrupt_message
 
         return super()._run_one(call, input_type, config)

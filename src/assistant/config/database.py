@@ -6,6 +6,7 @@ from assistant.config.app import config
 engine = None
 AsyncSessionLocal = None
 
+
 async def init_db():
     """Initialize the database connection."""
     global engine
@@ -23,12 +24,14 @@ async def init_db():
         )
     return engine
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get a database session."""
     if AsyncSessionLocal is None:
         await init_db()
     async with AsyncSessionLocal() as session:
         yield session
+
 
 def get_database_url(sync: bool = False) -> str:
     """Get the database URL from the environment."""

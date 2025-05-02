@@ -16,4 +16,4 @@ def get_documents() -> List[Document]:
         recursive=True,
         exclude_hidden=True,
     )
-    return reader.load_data() 
+    return reader.load_data()

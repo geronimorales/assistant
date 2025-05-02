@@ -20,9 +20,7 @@ class SearchResult(BaseModel):
 
 
 @router.post("/search", response_model=List[SearchResult])
-async def search(
-    query: SearchQuery
-) -> List[SearchResult]:
+async def search(query: SearchQuery) -> List[SearchResult]:
     """Search documents using vector similarity."""
     vector_store = VectorStoreService()
     index = vector_store.get_index()
@@ -35,4 +33,4 @@ async def search(
             score=node.score,
         )
         for node in response.source_nodes
-    ] 
+    ]
