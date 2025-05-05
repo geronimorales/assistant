@@ -56,39 +56,36 @@ def get_users_calendar(current_user_id: int, invited_user_id: int) -> dict:
     Returns:
         A dict with calendar information for both users.
     """
+    # Generate dates starting from tomorrow
+    start_date = datetime.now() + timedelta(days=1)
+
+    print("Start date: ", start_date)
+    dates = {}
+    
+    # Generate 3 days of calendar data
+    for i in range(3):
+        date = start_date + timedelta(days=i)
+        date_str = date.strftime("%Y-%m-%d")
+        
+        # Generate some random blocked slots for demonstration
+        blocked_slots = []
+        if i == 0:  # First day
+            blocked_slots = ["09:20", "09:40", "11:00"]
+        elif i == 1:  # Second day
+            blocked_slots = ["09:00", "09:20", "09:40", "10:00", "10:20", "10:40", "11:00", "11:20", "11:40"]
+        elif i == 2:  # Third day
+            blocked_slots = ["10:00"]
+            
+        dates[date_str] = {
+            "blocked": blocked_slots
+        }
 
     return {
         "calendar": {
             "start_at": "09:00",
             "end_at": "18:00",
             "duration": 20,  
-            "dates": {
-                "2025-05-02": {
-                    "blocked": [
-                        "09:20",
-                        "09:40",
-                        "11:00",
-                    ]
-                },
-                "2025-05-03": {
-                    "blocked": [
-                        "09:00",
-                        "09:20",
-                        "09:40",
-                        "10:00",
-                        "10:20",
-                        "10:40",
-                        "11:00",
-                        "11:20",
-                        "11:40",
-                    ]
-                },
-                "2025-05-04": {
-                    "blocked": [
-                        "10:00",
-                    ]
-                }
-            }
+            "dates": dates
         }
     }
 
@@ -97,7 +94,6 @@ def create_meeting(
     modality: Literal["in_person", "virtual"],
     date: str,
     time: str,
-    duration: int,
     title: str,
     current_user_id: int,
     invited_user_id: int,
@@ -108,7 +104,6 @@ def create_meeting(
         modality: The modality of the meeting (in_person, virtual).
         date: The date of the meeting in format YYYY-MM-DD.
         time: The time of the meeting in format HH:MM.
-        duration: The duration of the meeting in minutes.
         title: The title of the meeting.
         current_user_id: The id of the current user.
         invited_user_id: The id of the invited user.
@@ -121,7 +116,7 @@ def create_meeting(
         "modality": modality,
         "date": date,
         "time": time,
-        "duration": duration,
+        "duration": 20,
         "title": title,
         "current_user_id": current_user_id,
         "invited_user_id": invited_user_id,
