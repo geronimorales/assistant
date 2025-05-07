@@ -1,5 +1,6 @@
 import requests
 import uuid
+import json
 from datetime import datetime, timedelta
 from typing import Literal
 from mcp.server.fastmcp import FastMCP
@@ -26,7 +27,9 @@ def list_coincidences(query: str) -> dict:
 
     docs = retriever.retrieve(query)
 
-    return {"coincidences": docs}
+    results = [doc.node.get_content() for doc in docs]
+
+    return {"coincidences": results}
 
 
 @mcp.tool()
@@ -122,7 +125,6 @@ def create_meeting(
         "invited_user_id": invited_user_id,
     }
 
-
 def _get_retriever(max_items: int = 5) -> BaseRetriever:
     vector_store = VectorStoreService()
     index = vector_store.get_index()
@@ -132,7 +134,6 @@ def _get_retriever(max_items: int = 5) -> BaseRetriever:
             filters=[MetadataFilter(key="file_name", value="btbox.xlsx")]
         ),
     )
-
 
 def _exchange_token() -> str:
     """Exchange the token for a new one.
@@ -145,41 +146,11 @@ def _exchange_token() -> str:
     # response.raise_for_status()
     # return response.json()["access_token"]
 
-
 def _headers(token=None) -> dict:
     return {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
     }
-
-
-def generate_time_slots():
-    """Generate time slots from 8 AM to 12 PM in 20-minute intervals."""
-    slots = []
-    for hour in range(8, 12):
-        for minute in range(0, 60, 20):
-            time = f"{hour:02d}:{minute:02d}"
-            slots.append(time)
-    return slots
-
-def generate_calendar():
-    """Generate a calendar dictionary for the next 7 days with time slots."""
-    current_date = datetime.now()
-    calendar = {}
-    
-    # Generate time slots
-    time_slots = generate_time_slots()
-    
-    # Generate calendar for next 7 days
-    for day in range(7):
-        date = current_date + timedelta(days=day)
-        date_str = date.strftime("%Y-%m-%d")
-        calendar[date_str] = {
-            "slots": time_slots,
-            "available": {slot: True for slot in time_slots}
-        }
-    
-    return calendar
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
