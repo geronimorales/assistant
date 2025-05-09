@@ -23,7 +23,7 @@ from langchain_core.runnables import RunnableConfig
 
 from typing import cast
 from typing_extensions import Sequence
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage, RemoveMessage, SystemMessage
 
 from langgraph.errors import ErrorCode, create_error_message
 
@@ -59,6 +59,7 @@ class BaseAgent(ABC):
 
         self._tools = None
         self._model_runnable = None
+        self._summary_model = self._get_chat_model()
         self._graph = None
 
     @abstractmethod
@@ -76,6 +77,11 @@ class BaseAgent(ABC):
         ).partial(tools=[tool_name for tool_name, _ in self._tools_metadata.items()])
 
     def _get_assistant_runnable(self):
+        assistant_prompt = self._get_prompt_template(BaseAgent.PROMPT_NAME)
+        llm = self._get_chat_model()
+        return assistant_prompt | llm.bind_tools(self._tools)
+
+    def _get_summary_runnable(self):
         assistant_prompt = self._get_prompt_template(BaseAgent.PROMPT_NAME)
         llm = self._get_chat_model()
         return assistant_prompt | llm.bind_tools(self._tools)
@@ -176,6 +182,43 @@ class BaseAgent(ABC):
         # add agent name to the AIMessage
         response.name = self.__class__.__name__
         return {"messages": response}
+    
+    def _should_summarize(self, state: State) -> State:
+        messages = state.get("messages")
+        if len(messages) > 10:
+            return "summarize"
+        return END
+
+    async def _asummarize_chat_history(self, state: State) -> State:
+        messages = state.get("messages")
+
+        if len(messages) <= 10:
+            return {"messages": messages}
+        
+        summary = state.get("summary")
+        if summary:
+            summary_message = (
+                f"Este es el resumen de la conversación hasta el momento: {summary}\n\n"
+                "Extiende el resumen teniendo en cuenta los nuevos mensajes de arriba, preservando datos identificatorios de los participantes:"
+            )
+        else:
+            summary_message = "Por favor crea un resumen de la conversación de arriba, preservando datos identificatorios de los participantes:"
+        
+        messages = state["messages"] + [HumanMessage(content=summary_message)]
+        response = await self._summary_model.ainvoke(messages)
+
+        print("response", response)
+
+        delete_messages = [RemoveMessage(id=m.id) for m in state["messages"][:-2]]
+        
+        system_message = f"Summary of conversation earlier: {response.content}"
+        
+        new_messages = [SystemMessage(content=system_message)] + delete_messages
+
+        for message in new_messages:
+            message.pretty_print()
+
+        return {"summary": response.content, "messages": new_messages}
 
     async def _create_graph(self, checkpointer: AsyncPostgresSaver):
         """
@@ -195,14 +238,19 @@ class BaseAgent(ABC):
         graph_builder.add_node(
             "direct_tool_output", RunnableCallable(self._direct_tool_output)
         )
+        graph_builder.add_node(
+            "summarize", self._asummarize_chat_history
+        )
+        graph_builder.add_edge(START, "summarize")
 
-        graph_builder.add_edge(START, "assistant")
+        graph_builder.add_edge("summarize", "assistant")
 
         graph_builder.add_conditional_edges(
             "assistant", tools_condition, ["tools", END]
         )
-
+        
         graph_builder.add_edge("tools", "direct_tool_output")
+
         graph_builder.add_edge("direct_tool_output", "assistant")
 
         await checkpointer.setup()
@@ -232,7 +280,7 @@ class BaseAgent(ABC):
         async for event, meta in self._graph.astream(
             input, config=config, stream_mode="messages"
         ):
-            event.pretty_print()
+            # event.pretty_print()
             if (
                 hasattr(event, "tool_call_id")
                 and hasattr(event, "status")
