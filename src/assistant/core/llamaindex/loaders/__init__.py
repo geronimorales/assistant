@@ -21,6 +21,13 @@ def load_configs() -> Dict[str, Any]:
     return configs
 
 
+def load_documents_from_dir(dir_path: str) -> List[Document]:
+    """Load documents from the documents directory."""
+    configs = load_configs()
+    loader_config = configs.get("file")
+    return get_file_documents(FileLoaderConfig(**loader_config), dir_path=dir_path)
+
+
 def get_documents() -> List[Document]:
     """Load documents from the documents directory."""
     configs = load_configs()

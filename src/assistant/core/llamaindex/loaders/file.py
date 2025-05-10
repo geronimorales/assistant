@@ -1,8 +1,10 @@
 import os
 import logging
-from typing import Dict
+from typing import Dict, Optional
 from llama_parse import LlamaParse
 from pydantic import BaseModel
+from llama_index.core.schema import Document
+from llama_index.core.readers import SimpleDirectoryReader
 
 from assistant.config.app import config as app_config
 
@@ -35,9 +37,7 @@ def llama_parse_extractor() -> Dict[str, LlamaParse]:
     return {file_type: parser for file_type in SUPPORTED_FILE_TYPES}
 
 
-def get_file_documents(config: FileLoaderConfig):
-    from llama_index.core.readers import SimpleDirectoryReader
-
+def get_file_documents(config: FileLoaderConfig, dir_path: str | None = None):
     try:
         file_extractor = None
         if config.use_llama_parse:
@@ -49,7 +49,7 @@ def get_file_documents(config: FileLoaderConfig):
 
             file_extractor = llama_parse_extractor()
         reader = SimpleDirectoryReader(
-            app_config.get("llamaindex.data_dir"),
+            dir_path or app_config.get("llamaindex.data_dir"),
             recursive=True,
             filename_as_id=True,
             raise_on_error=True,
@@ -72,3 +72,57 @@ def get_file_documents(config: FileLoaderConfig):
         else:
             # Raise the error if it is not the case of empty data dir
             raise e
+
+
+def get_document(
+    file_path: str,
+    metadata: Optional[Dict] = None,
+    use_llama_parse: bool = False
+) -> Document:
+    """
+    Process a single file and return it as a Document.
+    
+    Args:
+        file_path: Path to the file to process
+        metadata: Optional metadata to add to the document
+        use_llama_parse: Whether to use LlamaParse for processing
+    
+    Returns:
+        Document: A llama_index Document containing the file content
+    """
+    try:
+        # Configure the file loader
+        config = FileLoaderConfig(use_llama_parse=use_llama_parse)
+        
+        # Create a SimpleDirectoryReader for the single file
+        file_extractor = None
+        if config.use_llama_parse:
+            import nest_asyncio
+            nest_asyncio.apply()
+            file_extractor = llama_parse_extractor()
+            
+        reader = SimpleDirectoryReader(
+            input_files=[file_path],
+            filename_as_id=True,
+            raise_on_error=True,
+            file_extractor=file_extractor,
+        )
+        
+        # Load the document
+        documents = reader.load_data()
+        
+        if not documents:
+            raise ValueError(f"No documents were extracted from the file: {file_path}")
+        
+        # Get the first document
+        document = documents[0]
+        
+        # Add additional metadata if provided
+        if metadata:
+            document.metadata.update(metadata)
+        
+        return document
+        
+    except Exception as e:
+        logger.error(f"Error processing file {file_path}: {str(e)}")
+        raise

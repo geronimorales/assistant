@@ -5,7 +5,7 @@ from llama_index.vector_stores.postgres import PGVectorStore
 from sqlalchemy import make_url
 
 from assistant.config.app import config
-from assistant.config.database import get_database_url
+from assistant.db.base import get_database_url
 
 
 class VectorStoreService:

@@ -5,9 +5,9 @@ from llama_index.core import Document
 from llama_index.readers.file import SimpleDirectoryReader
 
 
-def get_documents() -> List[Document]:
+def get_documents(dir_path: str) -> List[Document]:
     """Load documents from the documents directory."""
-    documents_dir = Path("documents")
+    documents_dir = Path(dir_path)
     if not documents_dir.exists():
         raise FileNotFoundError(f"Documents directory not found: {documents_dir}")
 

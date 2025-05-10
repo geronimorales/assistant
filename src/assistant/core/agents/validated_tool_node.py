@@ -49,9 +49,11 @@ class ValidatedToolNode(ToolNode):
         ] = True,
         messages_key: str = "messages",
         tools_metadata: Optional[dict] = None,
+        user_data: Optional[dict] = None
     ) -> None:
         self._validated = {}
         self._tools_metadata = tools_metadata
+        self._user_data = user_data
         super().__init__(
             tools,
             name=name,
@@ -137,6 +139,9 @@ class ValidatedToolNode(ToolNode):
 
         if interrupt_message := self._check_interrupt(call):
             return interrupt_message
+        
+        if self._user_data:
+            call["args"]["user_data"] = self._user_data 
 
         return await super()._arun_one(call, input_type, config)
 

@@ -3,23 +3,23 @@ from sqlalchemy import make_url
 from llama_index.core import StorageContext
 from llama_index.vector_stores.postgres import PGVectorStore
 
-from assistant.config.database import get_database_url
+from assistant.db.base import get_database_url
 
-from assistant.core.llamaindex.loaders import get_documents
+from assistant.core.llamaindex.loaders import load_documents_from_dir
+from assistant.core.llamaindex.loaders.file import get_document
 from assistant.config.llamaindex import init_settings
 
 from llama_index.core.indices import VectorStoreIndex
 
 
-def generate():
-    init_settings()
-
+def get_vector_store():
+    """Get or create the vector store instance."""
     embed_dim = 768
     table_name = config.get("llamaindex.data_table")
 
     url = make_url(get_database_url())
 
-    vector_store = PGVectorStore.from_params(
+    return PGVectorStore.from_params(
         database=url.database,
         host=url.host,
         password=url.password,
@@ -35,18 +35,60 @@ def generate():
         },
     )
 
+def index_file_documents(
+    dir_path: str,
+    metadata: dict = {}
+):
+    init_settings()
+
+    vector_store = get_vector_store()
+
     # load the documents and create the index
-    documents = get_documents()
+    documents = load_documents_from_dir(dir_path)
 
     # llama index filters documents with private=true
     # so we need to set private=false for the documents
     # if we don't set this metadata key the documents will be ignored
     # when we query the index
     for doc in documents:
-        doc.metadata["private"] = "false"
+        doc.metadata["private"] = "false"        
+        for key, value in metadata.items():
+            doc.metadata[key] = value
 
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     VectorStoreIndex.from_documents(
         documents, storage_context=storage_context, show_progress=True
     )
+
+def index_document(file_path: str, metadata: dict = None):
+    """
+    Index a single document from a file path.
+    
+    Args:
+        file_path: Path to the file to index
+        metadata: Optional metadata to add to the document
+    
+    Returns:
+        The created VectorStoreIndex
+    """
+    init_settings()
+    
+    # Get the document
+    document = get_document(file_path, metadata=metadata)
+    
+    # Set private flag to false to ensure document is queryable
+    document.metadata["private"] = "false"
+    
+    # Get vector store
+    vector_store = get_vector_store()
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+    
+    # Create index from single document
+    index = VectorStoreIndex.from_documents(
+        [document],
+        storage_context=storage_context,
+        show_progress=True
+    )
+    
+    return index

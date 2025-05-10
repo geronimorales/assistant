@@ -1,8 +1,7 @@
 import requests
 import uuid
-import json
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, Optional
 from mcp.server.fastmcp import FastMCP
 from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.vector_stores import MetadataFilters, MetadataFilter
@@ -14,7 +13,7 @@ api_key = ""
 
 
 @mcp.tool()
-def list_coincidences(query: str) -> dict:
+def list_coincidences(query: str, user_data: Optional[dict] = None) -> dict:
     """Retrieves documents with information of persons that match with the given query
 
     Args:
@@ -23,7 +22,13 @@ def list_coincidences(query: str) -> dict:
     Returns:
         A dict with the documents retrieved from the vector store.
     """
-    retriever = _get_retriever(max_items=10)
+
+    metadata = {}
+
+    if "event_id" in user_data:
+        metadata["event_id"] = user_data["event_id"]
+
+    retriever = _get_retriever(max_items=10, metadata=metadata)
 
     docs = retriever.retrieve(query)
 
@@ -125,13 +130,18 @@ def create_meeting(
         "invited_user_id": invited_user_id,
     }
 
-def _get_retriever(max_items: int = 5) -> BaseRetriever:
+def _get_retriever(max_items: int = 5, metadata: Optional[dict] = None) -> BaseRetriever:
     vector_store = VectorStoreService()
     index = vector_store.get_index()
+
+    filters = []
+    for k, v in metadata.items():
+        filters.append(MetadataFilter(key=k, value=v))
+
     return index.as_retriever(
         similarity_top_k=max_items,
         filters=MetadataFilters(
-            filters=[MetadataFilter(key="file_name", value="btbox.xlsx")]
+            filters=filters
         ),
     )
 

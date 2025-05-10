@@ -38,7 +38,12 @@ class BaseAgent(ABC):
 
     PROMPT_NAME = "v1"
 
-    def __init__(self, thread_id: any, mcps: dict | None = None):
+    def __init__(
+            self, 
+            thread_id: any, 
+            mcps: dict | None = None,
+            user_data: dict | None = None
+    ):
         """
         Initializes an BaseAgent instance.
 
@@ -49,7 +54,7 @@ class BaseAgent(ABC):
         """
         self._thread_id = thread_id
         self._mcps = mcps
-
+        self._user_data = user_data
         self._tools_metadata = {}
 
         for name, config in mcps.items():
@@ -190,7 +195,12 @@ class BaseAgent(ABC):
             "assistant", RunnableCallable(self._call_model, self._acall_model)
         )
         graph_builder.add_node(
-            "tools", ValidatedToolNode(self._tools, tools_metadata=self._tools_metadata)
+            "tools",
+            ValidatedToolNode(
+                self._tools, 
+                tools_metadata=self._tools_metadata,
+                user_data=self._user_data
+            )
         )
         graph_builder.add_node(
             "direct_tool_output", RunnableCallable(self._direct_tool_output)
