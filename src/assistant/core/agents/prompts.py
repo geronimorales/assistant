@@ -16,4 +16,6 @@ Tienes acceso a las siguientes herramientas: [{tools}]
 Genera un resumen para usar como respuesta al usuario siguiendo estas reglas:
 - El resumen **debe caber en una sola oración**.
 - El resumen **no debe contener información explícita del resultado de la herramienta**, solo una descripción general del resultado.
+
+La fecha y hora actual es {current_datetime}
 """

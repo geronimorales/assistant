@@ -1,7 +1,8 @@
 from typing import Dict, Optional
 
 from sqlalchemy import Column, String, JSON, Text, Integer
-from sqlalchemy.dialects.postgresql import UUID, VECTOR
+from sqlalchemy.dialects.postgresql import UUID
+from pgvector.sqlalchemy import Vector
 
 from assistant.models.base import Base
 
@@ -14,4 +15,4 @@ class FileChunk(Base):
     text = Column(Text, nullable=False)
     metadata_ = Column(JSON, nullable=True)
     node_id = Column(String, nullable=True)
-    embedding = Column(VECTOR(1536), nullable=True)  # Using 1536 dimensions for OpenAI embeddings 
+    embedding = Column(Vector(768), nullable=True)  # Using 1536 dimensions for OpenAI embeddings 

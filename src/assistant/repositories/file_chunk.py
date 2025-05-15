@@ -1,19 +1,17 @@
 from typing import List, Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete, cast, String
 
 from assistant.models.file_chunk import FileChunk
 from assistant.repositories.base import BaseRepository
+from assistant.schemas.file_chunk import FileChunkBase, FileChunkInDB
 
-
-class FileChunkRepository(BaseRepository[FileChunk]):
+class FileChunkRepository(BaseRepository[FileChunk, FileChunkBase, FileChunkInDB]):
     """Repository for managing FileChunk entities."""
     
     def __init__(self):
         super().__init__(FileChunk)
 
-    
-    
     async def get_by_node_id(self, node_id: str) -> Optional[FileChunk]:
         """Get a file chunk by its node_id."""
         async with self.session as session:
@@ -32,6 +30,17 @@ class FileChunkRepository(BaseRepository[FileChunk]):
             )
             return result.scalars().all()
         
+    async def delete_by_metadata(self, metadata_key: str, metadata_value: str) -> None:
+        """Delete file chunks by metadata key-value pair."""
+        session = await self.session
+        async with session as s:
+            await s.execute(
+                delete(FileChunk).where(
+                    FileChunk.metadata_.op("->>")(metadata_key) == metadata_value  
+                )
+            )
+            await s.commit()
+
     async def find_similar(
         self,
         embedding: List[float],

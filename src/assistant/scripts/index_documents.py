@@ -2,6 +2,8 @@ import argparse
 import json
 from typing import Dict, Optional
 
+import asyncio
+
 from assistant.core.llamaindex.indexer import index_file_documents
 
 
@@ -15,7 +17,7 @@ def parse_metadata(metadata_str: Optional[str]) -> Optional[Dict]:
         raise ValueError(f"Invalid metadata JSON format: {e}")
 
 
-def main():
+async def main():
     # Create the parser
     parser = argparse.ArgumentParser(description="Index documents with metadata")
     
@@ -37,8 +39,6 @@ def main():
     # Parse the remaining arguments
     metadata_args = metadata_parser.parse_args(remaining)
 
-    print("metadata_args", metadata_args)
-
     try:
         # Start with JSON metadata if provided
         metadata = {}
@@ -49,9 +49,7 @@ def main():
             if value is not None:
                 metadata[arg] = value
         
-        print("metadata", metadata) 
-
-        index_file_documents(dir_path=args.directory, metadata=metadata)
+        await index_file_documents(dir_path=args.directory, metadata=metadata)
         print("Successfully indexed documents")
         if metadata:
             print(f"With metadata: {metadata}")
@@ -61,6 +59,9 @@ def main():
         traceback.print_exc()
         exit(1)
 
+def cli():
+    asyncio.run(main())        
 
-if __name__ == "__main__":
-    main()
+
+# if __name__ == "__main__":
+#     asyncio.run(main())

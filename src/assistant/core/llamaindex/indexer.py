@@ -6,11 +6,12 @@ from llama_index.vector_stores.postgres import PGVectorStore
 from assistant.db.base import get_database_url
 
 from assistant.core.llamaindex.loaders import load_documents_from_dir
-from assistant.core.llamaindex.loaders.file import get_document
+from assistant.core.llamaindex.loaders.file import get_file_document
 from assistant.config.llamaindex import init_settings
 
 from llama_index.core.indices import VectorStoreIndex
 
+from assistant.repositories.file_chunk import FileChunkRepository
 
 def get_vector_store():
     """Get or create the vector store instance."""
@@ -35,13 +36,15 @@ def get_vector_store():
         },
     )
 
-def index_file_documents(
-    dir_path: str,
-    metadata: dict = {}
-):
+async def index_file_documents(dir_path: str, metadata: dict = {}):
     init_settings()
 
     vector_store = get_vector_store()
+
+    if "event_id" in metadata:
+        event_id = metadata.get("event_id")
+        file_chunk_repository = FileChunkRepository()
+        await file_chunk_repository.delete_by_metadata("event_id", event_id)
 
     # load the documents and create the index
     documents = load_documents_from_dir(dir_path)
@@ -61,7 +64,7 @@ def index_file_documents(
         documents, storage_context=storage_context, show_progress=True
     )
 
-def index_document(file_path: str, metadata: dict = None):
+async def index_file_document(file_path: str, metadata: dict = None):
     """
     Index a single document from a file path.
     
@@ -75,7 +78,7 @@ def index_document(file_path: str, metadata: dict = None):
     init_settings()
     
     # Get the document
-    document = get_document(file_path, metadata=metadata)
+    document = get_file_document(file_path, metadata=metadata)
     
     # Set private flag to false to ensure document is queryable
     document.metadata["private"] = "false"

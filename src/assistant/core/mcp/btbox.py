@@ -9,7 +9,9 @@ from assistant.services.vector_store import VectorStoreService
 
 mcp = FastMCP("Btbox MCP")
 
-api_key = ""
+server_url = "https://admin-dev.btboxevolution.com/api/assistant-chat"
+
+api_key = "NuTrd1ZNlKHfqGCQG4yDwkTRlgFS188p"
 
 
 @mcp.tool()
@@ -38,23 +40,29 @@ def list_coincidences(query: str, user_data: Optional[dict] = None) -> dict:
 
 
 @mcp.tool()
-def get_user_account() -> dict:
+def get_user_account(user_data: Optional[dict] = None) -> dict:
     """Retrieves account information of the active user.
 
     Returns:
         A dict with the user account information.
     """
-    return {
-        "id": 13,
-        "name": "Luciano Genessini",
-        "email": "lucianogenessini@gmail.com",
-        "phone": "+543938439384",
-        "address": "123 Main St, Anytown, USA",
-    }
-
+    response = requests.get(
+        f"{server_url}/user", 
+        headers=_headers(),
+        json={
+            "user_id": user_data.get("user_id", None),
+            "event_id": user_data.get("event_id", None)
+        }
+    )   
+    return _response_data(response)
+    
 
 @mcp.tool()
-def get_users_calendar(current_user_id: int, invited_user_id: int) -> dict:
+def get_users_calendar(
+    current_user_id: int,
+    invited_user_id: int,
+    user_data: Optional[dict] = None
+) -> dict:
     """Retrieves the calendar of the user with the given id
 
     Args:
@@ -64,38 +72,18 @@ def get_users_calendar(current_user_id: int, invited_user_id: int) -> dict:
     Returns:
         A dict with calendar information for both users.
     """
-    # Generate dates starting from tomorrow
-    start_date = datetime.now() + timedelta(days=1)
-
-    print("Start date: ", start_date)
-    dates = {}
+    response = requests.get(
+        f"{server_url}/calendar", 
+        headers=_headers(),
+        json={
+            "applicant_id": current_user_id,
+            "counterpart_id": invited_user_id,
+            "event_id": user_data.get("event_id", None)
+        }
+    )   
+    data = _response_data(response)
     
-    # Generate 3 days of calendar data
-    for i in range(3):
-        date = start_date + timedelta(days=i)
-        date_str = date.strftime("%Y-%m-%d")
-        
-        # Generate some random blocked slots for demonstration
-        blocked_slots = []
-        if i == 0:  # First day
-            blocked_slots = ["09:20", "09:40", "11:00"]
-        elif i == 1:  # Second day
-            blocked_slots = ["09:00", "09:20", "09:40", "10:00", "10:20", "10:40", "11:00", "11:20", "11:40"]
-        elif i == 2:  # Third day
-            blocked_slots = ["10:00"]
-            
-        dates[date_str] = {
-            "blocked": blocked_slots
-        }
-
-    return {
-        "calendar": {
-            "start_at": "09:00",
-            "end_at": "18:00",
-            "duration": 20,  
-            "dates": dates
-        }
-    }
+    return data
 
 @mcp.tool()
 def create_meeting(
@@ -105,6 +93,7 @@ def create_meeting(
     title: str,
     current_user_id: int,
     invited_user_id: int,
+    user_data: Optional[dict] = None
 ) -> dict:
     """Creates a meeting with the given data
 
@@ -119,15 +108,23 @@ def create_meeting(
     Returns:
         A dict with the meeting information.
     """
-    return {
-        "id": uuid.uuid4(),
-        "modality": modality,
-        "date": date,
-        "time": time,
-        "duration": 20,
-        "title": title,
-        "current_user_id": current_user_id,
-        "invited_user_id": invited_user_id,
+    params = {
+        "applicant_id": current_user_id,
+        "counterpart_id": invited_user_id,
+        "event_id": user_data.get("event_id", None),
+        "meeting_type": 1 if modality == "virtual" else 2,
+        "meeting_date": f"{date} {time}:00",
+    }
+
+    params_str = "&".join([f"{k}={v}" for k, v in params.items()])
+
+    response = requests.post(
+        f"{server_url}/meetings?{params_str}", 
+        headers=_headers()
+    )  
+    return _response_data(response) | {
+        "title": title, 
+        "duration": 30 + 10
     }
 
 def _get_retriever(max_items: int = 5, metadata: Optional[dict] = None) -> BaseRetriever:
@@ -145,22 +142,22 @@ def _get_retriever(max_items: int = 5, metadata: Optional[dict] = None) -> BaseR
         ),
     )
 
-def _exchange_token() -> str:
-    """Exchange the token for a new one.
-
-    Returns:
-        A new token.
-    """
-    pass
-    # response = requests.get(f"{api_url}/datum-os/oauth/token/exchange", headers=_headers())
-    # response.raise_for_status()
-    # return response.json()["access_token"]
-
 def _headers(token=None) -> dict:
     return {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
+        "X-API-Key": api_key,
     }
 
+def _response_data(response: requests.Response) -> dict:
+    response.raise_for_status()
+    content = None
+    try:
+        content = response.json()
+    except Exception as e: 
+        print("Error parsing response: ", e)
+        content = {}
+    finally:
+        return content.get("data", {})
+    
 if __name__ == "__main__":
     mcp.run(transport="stdio")
