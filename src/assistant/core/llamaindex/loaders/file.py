@@ -74,7 +74,7 @@ def get_file_documents(config: FileLoaderConfig, dir_path: str | None = None):
             raise e
 
 
-def get_document(
+def get_file_document(
     file_path: str,
     metadata: Optional[Dict] = None,
     use_llama_parse: bool = False

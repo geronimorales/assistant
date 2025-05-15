@@ -1,6 +1,8 @@
 import os
 import json
 
+from datetime import datetime
+
 from psycopg import AsyncConnection
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
@@ -78,7 +80,10 @@ class BaseAgent(ABC):
                 ("system", system_prompt),
                 ("placeholder", "{messages}"),
             ]
-        ).partial(tools=[tool_name for tool_name, _ in self._tools_metadata.items()])
+        ).partial(
+            tools=[tool_name for tool_name, _ in self._tools_metadata.items()],
+            current_datetime=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        )
 
     def _get_assistant_runnable(self):
         assistant_prompt = self._get_prompt_template(BaseAgent.PROMPT_NAME)

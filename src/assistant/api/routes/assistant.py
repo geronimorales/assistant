@@ -9,7 +9,6 @@ from assistant.config.app import config
 from assistant.config.mcp import load_config
 from assistant.repositories.thread import ThreadRepository
 
-from assistant.core.agents.ollama_agent import OllamaAgent
 from assistant.core.agents.openai_agent import OpenAIAgent
 
 router = APIRouter()
@@ -26,8 +25,6 @@ async def init(
         user_data = payload.get("user_data", None)
     except:
         user_data = None
-
-    print("user_data", user_data)
     
     thread = await thread_repository.create_with_user_data(user_data=user_data)
     return {"thread_id": str(thread.id)}
