@@ -2,33 +2,52 @@ import json
 from typing import Dict, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Form, APIRouter, HTTPException, status
+from fastapi import APIRouter, Form, Body, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from assistant.config.app import config
 from assistant.config.mcp import load_config
 from assistant.repositories.thread import ThreadRepository
+from assistant.schemas.thread import Thread, ThreadCreate
 
 from assistant.core.agents.openai_agent import OpenAIAgent
+from assistant.core.agents import prompts
+from pydantic import BaseModel
+from typing import Optional, Dict
+from assistant.repositories.user_config import UserConfigRepository
 
 router = APIRouter()
+user_config_repository = UserConfigRepository()
 thread_repository = ThreadRepository()
-
-
-@router.post("/assistant/init")
+    
+@router.post("/assistant/init", response_model=Optional[Thread])
 async def init(
-    payload: Optional[Dict] = None,
-) -> Dict[str, str]:
-    """Initialize a new thread with optional user data."""
-    
+    data: ThreadCreate = Body(...),
+) -> Optional[Thread]:
+    """Initialize a new thread with optional user data."""    
     try:
-        user_data = payload.get("user_data", None)
-    except:
-        user_data = None
-    
-    thread = await thread_repository.create_with_user_data(user_data=user_data)
-    return {"thread_id": str(thread.id)}
 
+        user_config = await user_config_repository.get_by_id(data.user_config_id)
+        if not user_config:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User config is not valid"
+            )
+
+        # Get user data from request and prevent saving keys present in user_config
+        user_data = data.user_data or {}
+        not_allowed_keys = [k for k, _ in user_config.config.items()]
+        filtered_user_data = {k:v for k, v in user_data.items() if k not in not_allowed_keys}
+        
+        thread = await thread_repository.create_with_config(
+            user_config_id=data.user_config_id,
+            user_data=filtered_user_data
+        )
+        
+        return thread
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Can't init thread: {e}"
+        )
 
 @router.post(
     "/assistant/chat",
@@ -50,10 +69,15 @@ async def chat(message: str = Form(...), thread_id: str = Form(...)):
     for mcp_server in mcps:
         mcp_configs[mcp_server] = all_mcp_configs[mcp_server]
 
+    user_data = {"user_config_id": str(thread.user_config.id)} | thread.user_data | thread.user_config.config
+
+    print("user_data", user_data)
+
     agent = OpenAIAgent(
         thread_id=thread.id, 
+        prompt=prompts.BTBOX_PROMPT,
         mcps=mcp_configs,
-        user_data=thread.user_data
+        user_data=user_data
     )
 
     response = agent.stream(message)

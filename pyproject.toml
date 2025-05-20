@@ -42,6 +42,7 @@ mypy = "^1.8.0"
 [tool.poetry.scripts]
 dev = "assistant.scripts.dev:main"
 index_documents = "assistant.scripts.index_documents:cli"
+manage_user_config = "assistant.scripts.manage_user_config:main"
 
 [build-system]
 requires = ["poetry-core"]

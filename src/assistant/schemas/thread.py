@@ -1,13 +1,14 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional, Dict, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class ThreadBase(BaseModel):
     """Base schema for Thread."""
-    user_data: Dict = Field(default_factory=dict)
+    user_config_id: UUID
+    user_data: Optional[Dict[str, Any]] = None
 
 
 class ThreadCreate(ThreadBase):
@@ -17,7 +18,7 @@ class ThreadCreate(ThreadBase):
 
 class ThreadUpdate(ThreadBase):
     """Schema for updating a Thread."""
-    user_data: Optional[Dict] = None
+    user_data: Optional[Dict[str, Any]] = None
 
 
 class ThreadInDB(ThreadBase):

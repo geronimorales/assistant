@@ -1,53 +1,23 @@
 import requests
-import uuid
-from datetime import datetime, timedelta
 from typing import Literal, Optional
 from mcp.server.fastmcp import FastMCP
-from llama_index.core.base.base_retriever import BaseRetriever
-from llama_index.core.vector_stores import MetadataFilters, MetadataFilter
-from assistant.services.vector_store import VectorStoreService
 
-mcp = FastMCP("Btbox MCP")
+mcp = FastMCP("Btbox Meetings")
 
-server_url = "https://admin-dev.btboxevolution.com/api/assistant-chat"
+server_url = ""
 
 api_key = "NuTrd1ZNlKHfqGCQG4yDwkTRlgFS188p"
 
-
 @mcp.tool()
-def list_coincidences(query: str, user_data: Optional[dict] = None) -> dict:
-    """Retrieves documents with information of persons that match with the given query
-
-    Args:
-        query: The query to search for.
-
-    Returns:
-        A dict with the documents retrieved from the vector store.
-    """
-
-    metadata = {}
-
-    if "event_id" in user_data:
-        metadata["event_id"] = user_data["event_id"]
-
-    retriever = _get_retriever(max_items=10, metadata=metadata)
-
-    docs = retriever.retrieve(query)
-
-    results = [doc.node.get_content() for doc in docs]
-
-    return {"coincidences": results}
-
-
-@mcp.tool()
-def get_user_account(user_data: Optional[dict] = None) -> dict:
+def get_user_info(user_data: Optional[dict] = None) -> dict:
     """Retrieves account information of the active user.
 
     Returns:
         A dict with the user account information.
     """
+    server_url = _api_url(user_data)
     response = requests.get(
-        f"{server_url}/user", 
+        f"{server_url}/assistant-chat/user", 
         headers=_headers(),
         json={
             "user_id": user_data.get("user_id", None),
@@ -56,7 +26,6 @@ def get_user_account(user_data: Optional[dict] = None) -> dict:
     )   
     return _response_data(response)
     
-
 @mcp.tool()
 def get_users_calendar(
     current_user_id: int,
@@ -72,8 +41,9 @@ def get_users_calendar(
     Returns:
         A dict with calendar information for both users.
     """
+    server_url = _api_url(user_data)
     response = requests.get(
-        f"{server_url}/calendar", 
+        f"{server_url}/assistant-chat/calendar", 
         headers=_headers(),
         json={
             "applicant_id": current_user_id,
@@ -108,6 +78,9 @@ def create_meeting(
     Returns:
         A dict with the meeting information.
     """
+
+    server_url = _api_url(user_data)
+
     params = {
         "applicant_id": current_user_id,
         "counterpart_id": invited_user_id,
@@ -119,28 +92,19 @@ def create_meeting(
     params_str = "&".join([f"{k}={v}" for k, v in params.items()])
 
     response = requests.post(
-        f"{server_url}/meetings?{params_str}", 
+        f"{server_url}/assistant-chat/meetings?{params_str}", 
         headers=_headers()
     )  
     return _response_data(response) | {
         "title": title, 
-        "duration": 30 + 10
+        "duration": user_data.get("duration", 30),
+        "break_time": user_data.get("break_time", 10)
     }
 
-def _get_retriever(max_items: int = 5, metadata: Optional[dict] = None) -> BaseRetriever:
-    vector_store = VectorStoreService()
-    index = vector_store.get_index()
-
-    filters = []
-    for k, v in metadata.items():
-        filters.append(MetadataFilter(key=k, value=v))
-
-    return index.as_retriever(
-        similarity_top_k=max_items,
-        filters=MetadataFilters(
-            filters=filters
-        ),
-    )
+def _api_url(user_data: dict) -> str:
+    if "api_url" not in user_data:
+        raise ValueError("api_url is not present in user_data")
+    return user_data.get("api_url")
 
 def _headers(token=None) -> dict:
     return {

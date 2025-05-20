@@ -43,6 +43,7 @@ class BaseAgent(ABC):
     def __init__(
             self, 
             thread_id: any, 
+            prompt: str,
             mcps: dict | None = None,
             user_data: dict | None = None
     ):
@@ -55,6 +56,7 @@ class BaseAgent(ABC):
             tools_metadata: (dict) this dict contains metadata for some tools.
         """
         self._thread_id = thread_id
+        self._prompt = prompt
         self._mcps = mcps
         self._user_data = user_data
         self._tools_metadata = {}
@@ -72,35 +74,18 @@ class BaseAgent(ABC):
     def _get_chat_model(self):
         pass
 
-    def _get_prompt_template(self, prompt_name: str):
-        system_prompt = self._load_system_prompt(prompt_name)
-
-        return ChatPromptTemplate.from_messages(
+    def _get_assistant_runnable(self):
+        assistant_prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", system_prompt),
+                ("system", self._prompt),
                 ("placeholder", "{messages}"),
             ]
         ).partial(
             tools=[tool_name for tool_name, _ in self._tools_metadata.items()],
             current_datetime=datetime.now().strftime("%Y-%m-%d %H:%M"),
         )
-
-    def _get_assistant_runnable(self):
-        assistant_prompt = self._get_prompt_template(BaseAgent.PROMPT_NAME)
         llm = self._get_chat_model()
         return assistant_prompt | llm.bind_tools(self._tools)
-
-    def _load_system_prompt(self, key: str) -> str:
-        """
-        Loads the system prompt from a prompts repository
-
-        Args:
-            key: (str) the key of the prompt to be loaded
-
-        Returns:
-            A string with the loaded prompt
-        """
-        return prompts.BTBOX_PROMPT
 
     def _direct_tool_output(self, state: State):
         messages = state.get("messages")

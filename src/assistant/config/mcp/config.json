@@ -1,8 +1,8 @@
 {
-    "btbox": {
+    "btbox-search": {
         "transport": "stdio",
         "command": "python",
-        "args": ["src/assistant/core/mcp/btbox.py"],
+        "args": ["src/assistant/core/mcp/btbox-search.py"],
         "metadata": {
             "list_coincidences": {
                 "name": "list_coincidences",
@@ -10,9 +10,16 @@
                 "message": "Buscando coincidencias...",
                 "return_direct": false,
                 "interrupt": false
-            },
-            "get_user_account": {
-                "name": "get_user_account",
+            }
+        }
+    },
+    "btbox-meetings": {
+        "transport": "stdio",
+        "command": "python",
+        "args": ["src/assistant/core/mcp/btbox-meetings.py"],
+        "metadata": {
+            "get_user_info": {
+                "name": "get_user_info",
                 "description": "Retrieves user account information",
                 "message": "Obteniendo información de tu perfil...",
                 "return_direct": false,

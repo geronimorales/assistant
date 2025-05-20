@@ -11,5 +11,5 @@ class OpenAIAgent(BaseAgent):
         return ChatOpenAI(
             api_key=os.getenv("OPENAI_API_KEY", None),
             model=os.getenv("LLM_MODEL", "gpt-4o"),
-            temperature=1.0,
+            temperature=1.0
         )

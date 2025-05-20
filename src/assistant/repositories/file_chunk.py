@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import select, func, delete, cast, String
+from sqlalchemy import select, func, delete, cast, String, Integer
 
 from assistant.models.file_chunk import FileChunk
 from assistant.repositories.base import BaseRepository
@@ -36,7 +36,7 @@ class FileChunkRepository(BaseRepository[FileChunk, FileChunkBase, FileChunkInDB
         async with session as s:
             await s.execute(
                 delete(FileChunk).where(
-                    FileChunk.metadata_.op("->>")(metadata_key) == metadata_value  
+                    cast(FileChunk.metadata_.op("->>")(metadata_key), Integer) == metadata_value
                 )
             )
             await s.commit()

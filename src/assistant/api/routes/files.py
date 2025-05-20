@@ -2,27 +2,27 @@ import json
 import tempfile
 import shutil
 from pathlib import Path
-
+from uuid import UUID
 from typing import Dict, Optional
 
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 from assistant.core.llamaindex.indexer import index_file_documents
-
+from assistant.repositories.user_config import UserConfigRepository
 router = APIRouter()
 
 
 @router.post("/files/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    payload: Optional[str] = Form(None),
+    user_config_id: str = Form(None),
 ) -> JSONResponse:
     """
     Upload a file with optional metadata. Index the file and return a JSON response.
     
     Args:
         file: The file to upload
-        payload: Optional dictionary containing metadata about the file
+        user_config_id: identifier for the user config to use
     
     Returns:
         JSONResponse with file details and metadata
@@ -31,16 +31,17 @@ async def upload_file(
     temp_dir = None
     user_data = None
 
-    print("payload", payload)
-
     try: 
-        payload =  json.loads(payload)    
-        user_data = payload.get("user_data", None)
-    except Exception as e:
-        print("Error loading json: ", e)
-        user_data = None
-           
-    try:
+        # Load user config if provided
+        user_config_repo = UserConfigRepository()
+        user_config = await user_config_repo.get_by_id(
+            config_id=UUID(user_config_id)
+        )
+        if not user_config:
+            return JSONResponse(
+                content={"error": "User config not found"},
+                status_code=404
+            )
 
         temp_dir = tempfile.mkdtemp()            
         
@@ -52,7 +53,9 @@ async def upload_file(
             for chunk in file.file:
                 f.write(chunk)
 
-        index_file_documents(dir_path=temp_dir_path, metadata=user_data)
+        metadata = {"user_config_id": user_config_id}
+
+        await index_file_documents(dir_path=temp_dir_path, metadata=metadata)
 
         return JSONResponse(
             content={"message": "File uploaded and indexed successfully"},

@@ -39,7 +39,7 @@ class AppConfig:
                 "async_database_url": os.getenv("LLM_MEMORY_ASYNC_DATABASE_URL", None)
             },
             "mcp": {
-                "servers": os.getenv("LLM_MCP_SERVERS", "").split(","),
+                "servers": [s.strip() for s in os.getenv("LLM_MCP_SERVERS", "").split(",")],
             },
             "openai": {
                 "api_key": os.getenv("LLM_OPENAI_API_KEY"),
