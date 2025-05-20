@@ -4,7 +4,7 @@
 The system follows a clean architecture pattern with clear separation of concerns:
 
 ```
-src/assistant/
+app/
 ├── api/        # API routes and endpoints
 ├── core/       # Core configuration and settings
 ├── db/         # Database models and configuration
